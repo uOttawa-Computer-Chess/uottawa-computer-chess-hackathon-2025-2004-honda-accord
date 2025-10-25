@@ -11,6 +11,7 @@ from lib.lichess_types import MOVE, HOMEMADE_ARGS_TYPE
 import logging
 import TranspositionTable
 from evaluation import evaluate
+from alphabeta import pick_move
 
 
 
@@ -135,52 +136,49 @@ class MyBot(ExampleEngine):
 
 
     def search(self, board: chess.Board, *args: HOMEMADE_ARGS_TYPE) -> PlayResult:
-        #implement alpha beta
+    # Parse args: (time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE)
+      time_limit = args[0] if (args and isinstance(args[0], Limit)) else None
+      root_moves = args[3] if (len(args) >= 4 and isinstance(args[3], list)) else None
 
+      # --- very simple time-based depth selection (naive) ---
+      if isinstance(time_limit.time, (int, float)):
+          my_time = time_limit.time
+          my_inc = 0
+      elif board.turn == chess.WHITE:
+          my_time = time_limit.white_clock if isinstance(time_limit.white_clock, (int, float)) else 0
+          my_inc = time_limit.white_inc if isinstance(time_limit.white_inc, (int, float)) else 0
+      else:
+          my_time = time_limit.black_clock if isinstance(time_limit.black_clock, (int, float)) else 0
+          my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, (int, float)) else 0
 
-        # NOTE: The sections below are intentionally simple to keep the example short.
-        # They demonstrate the structure of a search but also highlight the engine's
-        # weaknesses (fixed depth, naive time handling, no pruning, no quiescence, etc.).
+      budget = (my_time or 0) + 2 * (my_inc or 0)
+      if my_time is None:
+          total_depth = 4
+      elif budget >= 60:
+          total_depth = 4
+      elif budget >= 20:
+          total_depth = 3
+      elif budget >= 5:
+          total_depth = 2
+      else:
+          total_depth = 1
+      total_depth = max(1, int(total_depth))
 
-        # --- very simple time-based depth selection (naive) ---
-        # Expect args to be (time_limit: Limit, ponder: bool, draw_offered: bool, root_moves: MOVE)
-        time_limit = args[0] if (args and isinstance(args[0], Limit)) else None
-        my_time = my_inc = None
-        if time_limit is not None:
-            if isinstance(time_limit.time, (int, float)):
-                my_time = time_limit.time
-                my_inc = 0
-            elif board.turn == chess.WHITE:
-                my_time = time_limit.white_clock if isinstance(time_limit.white_clock, (int, float)) else 0
-                my_inc = time_limit.white_inc if isinstance(time_limit.white_inc, (int, float)) else 0
-            else:
-                my_time = time_limit.black_clock if isinstance(time_limit.black_clock, (int, float)) else 0
-                my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, (int, float)) else 0
+      # --- call the new negamax alpha-beta (alphabeta.py) ---
+      # self.transposition_table is your existing TranspositionTable.TranspositionTable()
+      move = pick_move(
+          board,
+          total_depth,
+          self.transposition_table,
+          allowed_moves=(root_moves if isinstance(root_moves, list) else None),
+      )
 
-        # Map a rough time budget to a coarse fixed depth.
-        # Examples:
-        # - >= 60s: depth 4
-        # - >= 20s: depth 3
-        # - >= 5s:  depth 2
-        # - else:   depth 1
-        remaining = my_time if isinstance(my_time, (int, float)) else None
-        inc = my_inc if isinstance(my_inc, (int, float)) else 0
-        budget = (remaining or 0) + 2 * inc  # crude increment bonus
-        if remaining is None:
-            total_depth = 4
-        elif budget >= 60:
-            total_depth = 4
-        elif budget >= 20:
-            total_depth = 3
-        elif budget >= 5:
-            total_depth = 2
-        else:
-            total_depth = 1
-        total_depth = max(1, int(total_depth))
+      return PlayResult(move, None)
 
 
 
-        def minimax(b: chess.Board, depth: int, maximizing: bool,alpha: int = -10**12, beta: int = 10**12) -> int:
+'''
+      def minimax(b: chess.Board, depth: int, maximizing: bool,alpha: int = -10**12, beta: int = 10**12) -> int:
 
           if depth == 0 or b.is_game_over():
               return evaluate(b, self.transposition_table)
@@ -234,3 +232,4 @@ class MyBot(ExampleEngine):
             best_move = legal[0]
 
         return PlayResult(best_move, None)
+'''
