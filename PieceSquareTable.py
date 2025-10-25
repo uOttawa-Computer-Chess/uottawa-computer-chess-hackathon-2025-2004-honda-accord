@@ -1,4 +1,5 @@
 import numpy as np
+import chess
 
 def getWhitePawnPst():
     return np.array([
@@ -75,6 +76,31 @@ def getWhiteKingPst():
 def flipPst(pst: np.ndarray) -> np.ndarray:
     """Return the black piece-square table by flipping the white one."""
     return np.flip(pst)
+
+def getBlackPawnPst(): return flipPst(getWhitePawnPst())
+def getBlackKnightPst(): return flipPst(getWhiteKnightPst())
+def getBlackBishopPst(): return flipPst(getWhiteBishopPst())
+def getBlackRookPst(): return flipPst(getWhiteRookPst())
+def getBlackQueenPst(): return flipPst(getWhiteQueenPst())
+def getBlackKingPst(): return flipPst(getWhiteKingPst())
+
+
+MG_PST = {
+    chess.PAWN:   getWhitePawnPst(),
+    chess.KNIGHT: getWhiteKnightPst(),
+    chess.BISHOP: getWhiteBishopPst(),
+    chess.ROOK:   getWhiteRookPst(),
+    chess.QUEEN:  getWhiteQueenPst(),
+    chess.KING:   getWhiteKingPst(),
+}
+
+# If you don't have distinct endgame tables yet, reuse MG for EG (make a copy to avoid later side-effects).
+EG_PST = {pt: lst[:] for pt, lst in MG_PST.items()}
+
+# (Optional) quick sanity checks:
+assert all(len(v) == 64 for v in MG_PST.values()), "MG_PST lists must be length 64"
+assert all(len(v) == 64 for v in EG_PST.values()), "EG_PST lists must be length 64"
+
 
 def getBlackPawnPst(): return flipPst(getWhitePawnPst())
 def getBlackKnightPst(): return flipPst(getWhiteKnightPst())
