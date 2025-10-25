@@ -11,6 +11,7 @@ from lib.lichess_types import MOVE, HOMEMADE_ARGS_TYPE
 import logging
 
 
+
 # Use this logger variable to print messages to the console or log files.
 # logger.info("message") will always print "message" to the console or log file.
 # logger.debug("message") will only print "message" if verbose logging is enabled.
@@ -95,7 +96,7 @@ class ComboEngine(ExampleEngine):
             move = possible_moves[0]
         return PlayResult(move, None, draw_offered=draw_offered)
 
-    
+
 class MyBot(ExampleEngine):
     """Template code for hackathon participants to modify.
 
