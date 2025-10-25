@@ -1,28 +1,24 @@
-# evaluation.py (or place in homemade.py near your search code)
+# evaluation.py
 import chess
 import TranspositionTable
-# --- Hook your PSTs here ---W
-# Expect: MG_PST/EG_PST are dicts keyed by chess piece types (PAWN..KING),
-# each mapping to a list[64] of centipawn scores for WHITE perspective.
-from PieceSquareTable import MG_PST, EG_PST  # <-- rename if your module uses different names
-
+# --- Hook your PSTs here ---
+from PieceSquareTable import MG_PST, EG_PST  # dicts: piece type -> np.array[64], white-oriented
 
 MATE = 32000  # normalized mate score (centipawns)
 
-# Base material in centipawns (can be tuned). Same set for MG/EG to start.
+# Base material in centipawns (can be tuned).
 _MAT = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
     chess.ROOK: 500,
     chess.QUEEN: 900,
-    chess.KING: 0,  # handled by checkmate, PSTs carry king activity
+    chess.KING: 0,  # handled by checkmate; PSTs carry king activity
 }
 MG_VALUES = _MAT
 EG_VALUES = _MAT
 
-# Game-phase weights (how quickly each piece "disappears" from the middlegame)
-# Standard total = 24: 4N*1 + 4B*1 + 4R*2 + 2Q*4
+# Game-phase weights (standard total = 24)
 _PHASE_WEIGHT = {
     chess.PAWN: 0,
     chess.KNIGHT: 1,
@@ -33,21 +29,22 @@ _PHASE_WEIGHT = {
 }
 _TOTAL_PHASE = 24
 
-# Small, safe heuristics
-TEMPO_BONUS = 10           # side to move gets a tiny nudge
+# Small heuristics
+TEMPO_BONUS = 10
 BISHOP_PAIR_MG = 30
 BISHOP_PAIR_EG = 40
 
 def _game_phase(board: chess.Board) -> int:
-    """Return phase in [0.._TOTAL_PHASE]; higher means 'more middlegame'."""
+    """Return phase in [0.._TOTAL_PHASE]; higher => more middlegame."""
     phase = 0
     for pt, w in _PHASE_WEIGHT.items():
         if w == 0:
             continue
         phase += w * (len(board.pieces(pt, chess.WHITE)) + len(board.pieces(pt, chess.BLACK)))
-    # Clamp (defensive), though it should already be within range.
     if phase > _TOTAL_PHASE:
         phase = _TOTAL_PHASE
+    if phase < 0:
+        phase = 0
     return phase
 
 def _pst_score(board: chess.Board, mg: bool) -> int:
@@ -57,12 +54,12 @@ def _pst_score(board: chess.Board, mg: bool) -> int:
     # White pieces: use square as-is
     for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING):
         for sq in board.pieces(pt, chess.WHITE):
-            total += PST[pt][sq]
+            total += int(PST[pt][sq])
     # Black pieces: mirror squares to reuse white-oriented PST and subtract
     for pt in (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING):
         for sq in board.pieces(pt, chess.BLACK):
-            total -= PST[pt][chess.square_mirror(sq)]
-    return total
+            total -= int(PST[pt][chess.square_mirror(sq)])
+    return int(total)
 
 def _material(board: chess.Board, mg: bool) -> int:
     """Material sum (white - black)."""
@@ -88,39 +85,44 @@ def evaluate(board: chess.Board, table) -> int:
     Positive => good for White; Negative => good for Black.
     Uses material + PST (MG/EG) with game-phase blending, bishop-pair, and a small tempo bonus.
     """
-    # Terminal outcomes (use white-centric perspective)
+    # Terminal outcomes (white-centric)
     if board.is_game_over():
         outcome = board.outcome()
         if outcome is None or outcome.winner is None:
             return 0  # draw
         return MATE if outcome.winner is chess.WHITE else -MATE
 
-
-
+    # Transposition-table backed cache (if provided)
     if table.exists(board):
-      blended = table.lookup(board)
-    else :
-      phase = _game_phase(board)  # 0..24
+        blended = table.lookup(board)
+        return int(blended)
 
-      # Middlegame & Endgame components
-      mg_score = 0
-      eg_score = 0
+    # Compute phase 0..24
+    phase = _game_phase(board)
 
-      mg_score += _material(board, mg=True)
-      eg_score += _material(board, mg=False)
+    # Middlegame & Endgame components
+    mg_score = 0
+    eg_score = 0
 
-      mg_score += _pst_score(board, mg=True)
-      eg_score += _pst_score(board, mg=False)
+    mg_score += _material(board, mg=True)
+    eg_score += _material(board, mg=False)
 
-      mg_score += _bishop_pair(board, mg=True)
-      eg_score += _bishop_pair(board, mg=False)
+    mg_score += _pst_score(board, mg=True)
+    eg_score += _pst_score(board, mg=False)
 
-      # Tiny tempo (side to move) — helps stability; white-centric so + for White-to-move
-      tempo = TEMPO_BONUS if board.turn == chess.WHITE else -TEMPO_BONUS
-      mg_score += tempo
-      eg_score += tempo
+    mg_score += _bishop_pair(board, mg=True)
+    eg_score += _bishop_pair(board, mg=False)
 
-      # Tapered blend
-      blended = (mg_score * phase + eg_score * (_TOTAL_PHASE - phase)) // _TOTAL_PHASE
-      table.storePosition(board,blended)
+    # Tiny tempo bonus (white-centric)
+    tempo = TEMPO_BONUS if board.turn == chess.WHITE else -TEMPO_BONUS
+    mg_score += tempo
+    eg_score += tempo
+
+    # Safe, clamped tapered blend (avoid NumPy overflow if any np.int sneaks in)
+    phase = max(0, min(_TOTAL_PHASE, int(phase)))
+    mg_score = int(mg_score)
+    eg_score = int(eg_score)
+
+    blended = (mg_score * phase + eg_score * (_TOTAL_PHASE - phase)) // _TOTAL_PHASE
+    table.storePosition(board, blended)
     return int(blended)

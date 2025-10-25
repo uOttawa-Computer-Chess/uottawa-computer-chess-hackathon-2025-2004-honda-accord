@@ -1,13 +1,18 @@
 # alphabeta.py
 import chess
+import logging
 from typing import Optional, Dict, Tuple
 from dataclasses import dataclass
 
 from evaluation import evaluate          # <- your existing evaluator
 import TranspositionTable                # <- your simple eval cache (we will reuse the instance you pass)
 
+logger = logging.getLogger(__name__)
+
 INF = 10 ** 12
+MATE = 10 ** 9          # large enough to dominate any eval; tune if you already define this elsewhere
 TT_EXACT, TT_LOWER, TT_UPPER = 0, 1, 2
+CONTEMPT = 20           # centipawns; nudge away from easy repetition/50-move draws
 
 # Light piece values for capture ordering (MVV-LVA)
 _PV = {
@@ -80,15 +85,33 @@ def negamax(board: chess.Board,
             alpha: int,
             beta: int,
             table: TranspositionTable.TranspositionTable,
-            search_tt: Optional[Dict[Tuple[str, bool, int, Optional[int]], _Entry]] = None) -> int:
+            search_tt: Optional[Dict[Tuple[str, bool, int, Optional[int]], _Entry]] = None,
+            ply: int = 0) -> int:
     """
-    Negamax with alpha-beta pruning.
+    Negamax with alpha-beta pruning + draw contempt + mate-distance scoring + tiny check extension.
     Returns a score from the perspective of the side to move (White-positive).
     - `table` is your existing TranspositionTable instance used by evaluate().
     - `search_tt` is an optional dict used only for search bounds/PV (separate from `table`).
     """
     if search_tt is None:
         search_tt = {}
+
+    # --- Draw contempt for claimable draws (nudge away from easy repetition/50-move) ---
+    if board.can_claim_threefold_repetition() or board.can_claim_fifty_moves():
+        return -CONTEMPT
+
+    # --- True terminal: mate/stalemate/insufficient, with mate-distance scoring ---
+    if board.is_game_over():
+        out = board.outcome()
+        if out is None or out.winner is None:
+            return -CONTEMPT  # treat terminal draw as slightly worse than playing on
+        # Positive if winner is the side to move (rare at terminal), negative otherwise
+        return (MATE - ply) if out.winner == board.turn else -(MATE - ply)
+
+    # --- Regular leaf (depth exhausted): use your evaluator (white-centric) ---
+    if depth == 0:
+        color = 1 if board.turn == chess.WHITE else -1
+        return color * evaluate(board, table)
 
     key = _tt_key(board)
     orig_alpha, orig_beta = alpha, beta
@@ -108,18 +131,15 @@ def negamax(board: chess.Board,
             return tte.score
         tt_move = tte.move
 
-    # Terminal / leaf
-    if depth == 0 or board.is_game_over():
-        color = 1 if board.turn == chess.WHITE else -1
-        return color * evaluate(board, table)
-
     best_score = -INF
     best_move = None
 
     # Order moves
     for m in _order_moves(board, board.legal_moves, tt_move):
         board.push(m)
-        score = -negamax(board, depth - 1, -beta, -alpha, table, search_tt)
+        # --- tiny check extension: if resulting position is check, extend by 1 ply ---
+        next_depth = depth - 1 + (1 if board.is_check() else 0)
+        score = -negamax(board, next_depth, -beta, -alpha, table, search_tt, ply + 1)
         board.pop()
 
         if score > best_score:
@@ -150,6 +170,7 @@ def pick_move(board: chess.Board,
     Root driver for negamax. Respects an optional `allowed_moves` list (e.g., Lichess root_moves).
     Returns the best move at the requested depth.
     """
+    logger.info(f"[alphabeta] search depth = {depth}")
     legal = list(board.legal_moves)
     if allowed_moves:
         allow_uci = {m.uci() for m in allowed_moves}
@@ -165,7 +186,7 @@ def pick_move(board: chess.Board,
     # Order root moves once using a dummy (no TT move yet)
     for m in _order_moves(board, legal, None):
         board.push(m)
-        val = -negamax(board, depth - 1, -INF, INF, table, search_tt)
+        val = -negamax(board, depth - 1, -INF, INF, table, search_tt, ply=1)
         board.pop()
 
         if val > best_val:

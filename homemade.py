@@ -152,6 +152,7 @@ class MyBot(ExampleEngine):
           my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, (int, float)) else 0
 
       budget = (my_time or 0) + 2 * (my_inc or 0)
+
       if my_time is None:
           total_depth = 4
       elif budget >= 60:
@@ -162,7 +163,10 @@ class MyBot(ExampleEngine):
           total_depth = 2
       else:
           total_depth = 1
+
       total_depth = max(1, int(total_depth))
+
+
 
       # --- call the new negamax alpha-beta (alphabeta.py) ---
       # self.transposition_table is your existing TranspositionTable.TranspositionTable()
