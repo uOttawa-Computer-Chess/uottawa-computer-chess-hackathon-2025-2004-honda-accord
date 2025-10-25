@@ -179,61 +179,34 @@ class MyBot(ExampleEngine):
         total_depth = max(1, int(total_depth))
 
 
-        # --- simple material evaluator (White-positive score) ---
-        # def evaluate(b: chess.Board) -> int:
 
-        #     # check transposition table:
-        #     if self.transposition_table.exists(board):
-        #         score = self.transposition_table.lookup(board)
-        #     else :
-        #         # Large score for terminal outcomes
-        #         if b.is_game_over():
-        #             outcome = b.outcome()
-        #             if outcome is None or outcome.winner is None:
-        #                 return 0  # draw
-        #             return 10_000_000 if outcome.winner is chess.WHITE else -10_000_000
+        def minimax(b: chess.Board, depth: int, maximizing: bool,alpha: int = -10**12, beta: int = 10**12) -> int:
 
-        #         values = {
-        #             chess.PAWN: 100,
-        #             chess.KNIGHT: 320,
-        #             chess.BISHOP: 330,
-        #             chess.ROOK: 500,
-        #             chess.QUEEN: 900,
-        #             chess.KING: 0,  # king material ignored (checkmates handled above)
-        #         }
-        #         score = 0
-        #         for pt, v in values.items():
-        #             score += v * (len(b.pieces(pt, chess.WHITE)) - len(b.pieces(pt, chess.BLACK)))
+          if depth == 0 or b.is_game_over():
+              return evaluate(b, self.transposition_table)
 
-        #         # store it for next time
-        #         self.transposition_table.storePosition(board)
-
-
-        #     return score
-
-        # --- plain minimax (no alpha-beta) ---
-        def minimax(b: chess.Board, depth: int, maximizing: bool) -> int:
-            if depth == 0 or b.is_game_over():
-                return evaluate(b, self.transposition_table)
-
-            if maximizing:
-                best = -10**12
-                for m in b.legal_moves:
-                    b.push(m)
-                    val = minimax(b, depth - 1, False)
-                    b.pop()
-                    if val > best:
-                        best = val
-                return best
-            else:
-                best = 10**12
-                for m in b.legal_moves:
-                    b.push(m)
-                    val = minimax(b, depth - 1, True)
-                    b.pop()
-                    if val < best:
-                        best = val
-                return best
+          if maximizing:
+              best = alpha
+              for m in b.legal_moves:
+                  b.push(m)
+                  val = minimax(b, depth - 1, False, best, beta)
+                  b.pop()
+                  if val > best:
+                      best = val
+                  if best >= beta:  # beta cut-off
+                      break
+              return best
+          else:
+              best = beta
+              for m in b.legal_moves:
+                  b.push(m)
+                  val = minimax(b, depth - 1, True, alpha, best)
+                  b.pop()
+                  if val < best:
+                      best = val
+                  if best <= alpha:  # alpha cut-off
+                      break
+              return best
 
         # --- root move selection ---
         legal = list(board.legal_moves)
