@@ -97,6 +97,7 @@ class ComboEngine(ExampleEngine):
         return PlayResult(move, None, draw_offered=draw_offered)
 
 
+
 class MyBot(ExampleEngine):
     """Template code for hackathon participants to modify.
 
@@ -118,6 +119,9 @@ class MyBot(ExampleEngine):
     """
 
     def search(self, board: chess.Board, *args: HOMEMADE_ARGS_TYPE) -> PlayResult:
+        #implement alpha beta
+
+
         # NOTE: The sections below are intentionally simple to keep the example short.
         # They demonstrate the structure of a search but also highlight the engine's
         # weaknesses (fixed depth, naive time handling, no pruning, no quiescence, etc.).
