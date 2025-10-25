@@ -9,6 +9,8 @@ import random
 from lib.engine_wrapper import MinimalEngine
 from lib.lichess_types import MOVE, HOMEMADE_ARGS_TYPE
 import logging
+import TranspositionTable
+from evaluation import evaluate
 
 
 
@@ -96,35 +98,13 @@ class ComboEngine(ExampleEngine):
             move = possible_moves[0]
         return PlayResult(move, None, draw_offered=draw_offered)
 
-import chess
-
-class TranspositionTable:
-    """Simple transposition table wrapper around a Python dict."""
-    
-    def __init__(self):
-        self.hashTable = {}
-
-    def _key(self, position: chess.Board):
-        """Return a unique and hashable key for the position."""
-        return position.fen()  
-
-    def storePosition(self, position: chess.Board, eval: int):
-        key = self._key(position)
-        self.hashTable[key] = eval
-
-    def lookup(self, position: chess.Board):
-        key = self._key(position)
-        return self.hashTable.get(key)
-
-    def exists(self, position: chess.Board) -> bool:
-        key = self._key(position)
-        return key in self.hashTable
 
 
 
 
-        
-    
+
+
+
 
 
 class MyBot(ExampleEngine):
@@ -146,11 +126,11 @@ class MyBot(ExampleEngine):
     iterative deepening, quiescence search, move ordering (MVV/LVA, history),
     transposition table, and a richer evaluator to make it competitive.
     """
-    
+
     # extended constructor
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs) 
-        self.transposition_table = TranspositionTable()
+        super().__init__(*args, **kwargs)
+        self.transposition_table = TranspositionTable.TranspositionTable()
 
 
 
@@ -198,42 +178,43 @@ class MyBot(ExampleEngine):
             total_depth = 1
         total_depth = max(1, int(total_depth))
 
-        # --- simple material evaluator (White-positive score) ---
-        def evaluate(b: chess.Board) -> int:
-            
-            # check transposition table:
-            if self.transposition_table.exists(board):
-                score = self.transposition_table.lookup(board)
-            else :
-                # Large score for terminal outcomes
-                if b.is_game_over():
-                    outcome = b.outcome()
-                    if outcome is None or outcome.winner is None:
-                        return 0  # draw
-                    return 10_000_000 if outcome.winner is chess.WHITE else -10_000_000
 
-                values = {
-                    chess.PAWN: 100,
-                    chess.KNIGHT: 320,
-                    chess.BISHOP: 330,
-                    chess.ROOK: 500,
-                    chess.QUEEN: 900,
-                    chess.KING: 0,  # king material ignored (checkmates handled above)
-                }
-                score = 0
-                for pt, v in values.items():
-                    score += v * (len(b.pieces(pt, chess.WHITE)) - len(b.pieces(pt, chess.BLACK)))        
-            
-                # store it for next time
-                self.transposition_table.storePosition(board)
-            
-                
-            return score
+        # --- simple material evaluator (White-positive score) ---
+        # def evaluate(b: chess.Board) -> int:
+
+        #     # check transposition table:
+        #     if self.transposition_table.exists(board):
+        #         score = self.transposition_table.lookup(board)
+        #     else :
+        #         # Large score for terminal outcomes
+        #         if b.is_game_over():
+        #             outcome = b.outcome()
+        #             if outcome is None or outcome.winner is None:
+        #                 return 0  # draw
+        #             return 10_000_000 if outcome.winner is chess.WHITE else -10_000_000
+
+        #         values = {
+        #             chess.PAWN: 100,
+        #             chess.KNIGHT: 320,
+        #             chess.BISHOP: 330,
+        #             chess.ROOK: 500,
+        #             chess.QUEEN: 900,
+        #             chess.KING: 0,  # king material ignored (checkmates handled above)
+        #         }
+        #         score = 0
+        #         for pt, v in values.items():
+        #             score += v * (len(b.pieces(pt, chess.WHITE)) - len(b.pieces(pt, chess.BLACK)))
+
+        #         # store it for next time
+        #         self.transposition_table.storePosition(board)
+
+
+        #     return score
 
         # --- plain minimax (no alpha-beta) ---
         def minimax(b: chess.Board, depth: int, maximizing: bool) -> int:
             if depth == 0 or b.is_game_over():
-                return evaluate(b)
+                return evaluate(b, self.transposition_table)
 
             if maximizing:
                 best = -10**12

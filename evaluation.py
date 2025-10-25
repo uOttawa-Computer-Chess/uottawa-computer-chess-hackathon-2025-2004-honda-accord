@@ -1,10 +1,11 @@
 # evaluation.py (or place in homemade.py near your search code)
 import chess
-
+import TranspositionTable
 # --- Hook your PSTs here ---W
 # Expect: MG_PST/EG_PST are dicts keyed by chess piece types (PAWN..KING),
 # each mapping to a list[64] of centipawn scores for WHITE perspective.
 from PieceSquareTable import MG_PST, EG_PST  # <-- rename if your module uses different names
+
 
 MATE = 32000  # normalized mate score (centipawns)
 
@@ -81,7 +82,7 @@ def _bishop_pair(board: chess.Board, mg: bool) -> int:
     else:
         return (BISHOP_PAIR_EG if w_pair else 0) - (BISHOP_PAIR_EG if b_pair else 0)
 
-def evaluate(board: chess.Board) -> int:
+def evaluate(board: chess.Board, table) -> int:
     """
     White-centric tapered evaluation (centipawns).
     Positive => good for White; Negative => good for Black.
@@ -94,26 +95,32 @@ def evaluate(board: chess.Board) -> int:
             return 0  # draw
         return MATE if outcome.winner is chess.WHITE else -MATE
 
-    phase = _game_phase(board)  # 0..24
 
-    # Middlegame & Endgame components
-    mg_score = 0
-    eg_score = 0
 
-    mg_score += _material(board, mg=True)
-    eg_score += _material(board, mg=False)
+    if table.exists(board):
+      blended = table.lookup(board)
+    else :
+      phase = _game_phase(board)  # 0..24
 
-    mg_score += _pst_score(board, mg=True)
-    eg_score += _pst_score(board, mg=False)
+      # Middlegame & Endgame components
+      mg_score = 0
+      eg_score = 0
 
-    mg_score += _bishop_pair(board, mg=True)
-    eg_score += _bishop_pair(board, mg=False)
+      mg_score += _material(board, mg=True)
+      eg_score += _material(board, mg=False)
 
-    # Tiny tempo (side to move) — helps stability; white-centric so + for White-to-move
-    tempo = TEMPO_BONUS if board.turn == chess.WHITE else -TEMPO_BONUS
-    mg_score += tempo
-    eg_score += tempo
+      mg_score += _pst_score(board, mg=True)
+      eg_score += _pst_score(board, mg=False)
 
-    # Tapered blend
-    blended = (mg_score * phase + eg_score * (_TOTAL_PHASE - phase)) // _TOTAL_PHASE
+      mg_score += _bishop_pair(board, mg=True)
+      eg_score += _bishop_pair(board, mg=False)
+
+      # Tiny tempo (side to move) — helps stability; white-centric so + for White-to-move
+      tempo = TEMPO_BONUS if board.turn == chess.WHITE else -TEMPO_BONUS
+      mg_score += tempo
+      eg_score += tempo
+
+      # Tapered blend
+      blended = (mg_score * phase + eg_score * (_TOTAL_PHASE - phase)) // _TOTAL_PHASE
+      table.storePosition(board,blended)
     return int(blended)
