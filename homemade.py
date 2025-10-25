@@ -96,7 +96,14 @@ class ComboEngine(ExampleEngine):
             move = possible_moves[0]
         return PlayResult(move, None, draw_offered=draw_offered)
 
-
+class TranspositionTable:
+    def __init__(self):
+        self.hashTable = {}
+        
+    def storePosition(self, position, eval):
+        self.hashTabl[position] = eval
+        
+    
 
 class MyBot(ExampleEngine):
     """Template code for hackathon participants to modify.
