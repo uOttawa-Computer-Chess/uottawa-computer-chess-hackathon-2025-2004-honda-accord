@@ -1,20 +1,19 @@
-
+import numpy as np
 
 def getWhitePawnPst():
-    return [
+    return np.array([
          0,  0,  0,  0,  0,  0,  0,  0,
          5, 10, 10,-20,-20, 10, 10,  5,
          5, -5,-10,  0,  0,-10, -5,  5,
          0,  0,  0, 20, 20,  0,  0,  0,
          5,  5, 10, 25, 25, 10,  5,  5,
-         10, 10, 20, 30, 30, 20, 10, 10,
-         50, 50, 50, 50, 50, 50, 50, 50,
+        10, 10, 20, 30, 30, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
          0,  0,  0,  0,  0,  0,  0,  0
-    ]
-
+    ], dtype=np.int16)
 
 def getWhiteKnightPst():
-    return [
+    return np.array([
        -50,-40,-30,-30,-30,-30,-40,-50,
        -40,-20,  0,  5,  5,  0,-20,-40,
        -30,  5, 10, 15, 15, 10,  5,-30,
@@ -23,11 +22,10 @@ def getWhiteKnightPst():
        -30,  0, 10, 15, 15, 10,  0,-30,
        -40,-20,  0,  0,  0,  0,-20,-40,
        -50,-40,-30,-30,-30,-30,-40,-50
-    ]
-
+    ], dtype=np.int16)
 
 def getWhiteBishopPst():
-    return [
+    return np.array([
        -20,-10,-10,-10,-10,-10,-10,-20,
        -10,  5,  0,  0,  0,  0,  5,-10,
        -10, 10, 10, 10, 10, 10, 10,-10,
@@ -36,11 +34,10 @@ def getWhiteBishopPst():
        -10,  0,  5, 10, 10,  5,  0,-10,
        -10,  0,  0,  0,  0,  0,  0,-10,
        -20,-10,-10,-10,-10,-10,-10,-20
-    ]
-
+    ], dtype=np.int16)
 
 def getWhiteRookPst():
-    return [
+    return np.array([
          0,  0,  5, 10, 10,  5,  0,  0,
         -5,  0,  0,  0,  0,  0,  0, -5,
         -5,  0,  0,  0,  0,  0,  0, -5,
@@ -49,11 +46,10 @@ def getWhiteRookPst():
         -5,  0,  0,  0,  0,  0,  0, -5,
          5, 10, 10, 10, 10, 10, 10,  5,
          0,  0,  0,  0,  0,  0,  0,  0
-    ]
-
+    ], dtype=np.int16)
 
 def getWhiteQueenPst():
-    return [
+    return np.array([
        -20,-10,-10, -5, -5,-10,-10,-20,
        -10,  0,  5,  0,  0,  0,  0,-10,
        -10,  5,  5,  5,  5,  5,  0,-10,
@@ -62,11 +58,10 @@ def getWhiteQueenPst():
        -10,  0,  5,  5,  5,  5,  0,-10,
        -10,  0,  0,  0,  0,  0,  0,-10,
        -20,-10,-10, -5, -5,-10,-10,-20
-    ]
-
+    ], dtype=np.int16)
 
 def getWhiteKingPst():
-    return [
+    return np.array([
          20, 30, 10,  0,  0, 10, 30, 20,
          20, 20,  0,  0,  0,  0, 20, 20,
         -10,-20,-20,-20,-20,-20,-20,-10,
@@ -75,13 +70,11 @@ def getWhiteKingPst():
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30
-    ]
+    ], dtype=np.int16)
 
-
-def flipPst(pst):
+def flipPst(pst: np.ndarray) -> np.ndarray:
     """Return the black piece-square table by flipping the white one."""
-    return [pst[63 - i] for i in range(64)]
-
+    return np.flip(pst)
 
 def getBlackPawnPst(): return flipPst(getWhitePawnPst())
 def getBlackKnightPst(): return flipPst(getWhiteKnightPst())
