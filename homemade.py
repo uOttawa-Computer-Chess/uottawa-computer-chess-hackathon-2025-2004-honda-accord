@@ -152,12 +152,12 @@ class MyBot(ExampleEngine):
           my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, (int, float)) else 0
 
 
-      move = iterativeDeepening(
-          board, 
-          self.transposition_table, 
+      move = iterativeDeepening.iterativeDeepen(
+          board,
+          self.transposition_table,
           (root_moves if isinstance(root_moves, list) else None),
           my_time,
-          my_inc
+          my_inc,
       )
 
       return PlayResult(move, None)
