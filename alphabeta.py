@@ -145,7 +145,9 @@ def negamax(board: chess.Board,
 def pick_move(board: chess.Board,
               depth: int,
               table: TranspositionTable.TranspositionTable,
-              allowed_moves: Optional[list] = None) -> chess.Move:
+              allowed_moves: Optional[list] = None,
+              prev_best: Optional[chess.Board] = None) -> chess.Move:
+              
     """
     Root driver for negamax. Respects an optional `allowed_moves` list (e.g., Lichess root_moves).
     Returns the best move at the requested depth.
@@ -161,9 +163,11 @@ def pick_move(board: chess.Board,
     search_tt: Dict[Tuple[str, bool, int, Optional[int]], _Entry] = {}
     best_move = legal[0]
     best_val = -INF
+    
+    # use prev_best
+    tt_move = prev_best if prev_best in legal else None
 
-    # Order root moves once using a dummy (no TT move yet)
-    for m in _order_moves(board, legal, None):
+    for m in _order_moves(board, legal, tt_move):
         board.push(m)
         val = -negamax(board, depth - 1, -INF, INF, table, search_tt)
         board.pop()

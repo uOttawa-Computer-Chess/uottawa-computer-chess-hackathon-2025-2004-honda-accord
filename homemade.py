@@ -12,6 +12,7 @@ import logging
 import TranspositionTable
 from evaluation import evaluate
 from alphabeta import pick_move
+import iterativeDeepening
 
 
 
@@ -140,7 +141,6 @@ class MyBot(ExampleEngine):
       time_limit = args[0] if (args and isinstance(args[0], Limit)) else None
       root_moves = args[3] if (len(args) >= 4 and isinstance(args[3], list)) else None
 
-      # --- very simple time-based depth selection (naive) ---
       if isinstance(time_limit.time, (int, float)):
           my_time = time_limit.time
           my_inc = 0
@@ -151,26 +151,13 @@ class MyBot(ExampleEngine):
           my_time = time_limit.black_clock if isinstance(time_limit.black_clock, (int, float)) else 0
           my_inc = time_limit.black_inc if isinstance(time_limit.black_inc, (int, float)) else 0
 
-      budget = (my_time or 0) + 2 * (my_inc or 0)
-      if my_time is None:
-          total_depth = 4
-      elif budget >= 60:
-          total_depth = 4
-      elif budget >= 20:
-          total_depth = 3
-      elif budget >= 5:
-          total_depth = 2
-      else:
-          total_depth = 1
-      total_depth = max(1, int(total_depth))
 
-      # --- call the new negamax alpha-beta (alphabeta.py) ---
-      # self.transposition_table is your existing TranspositionTable.TranspositionTable()
-      move = pick_move(
-          board,
-          total_depth,
-          self.transposition_table,
-          allowed_moves=(root_moves if isinstance(root_moves, list) else None),
+      move = iterativeDeepening(
+          board, 
+          self.transposition_table, 
+          (root_moves if isinstance(root_moves, list) else None),
+          my_time,
+          my_inc
       )
 
       return PlayResult(move, None)
